@@ -18,12 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
     ];
     
     if (!empty($data['title']) && !empty($data['category'])) {
+        // Convert boolean for PostgreSQL
+        $isActive = $data['is_active'] ? 'true' : 'false';
+        
         if ($action === 'edit' && $id > 0) {
             db()->query("UPDATE services SET title = ?, description = ?, category = ?, icon = ?, order_index = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                [$data['title'], $data['description'], $data['category'], $data['icon'], $data['order_index'], $data['is_active'], $id]);
+                [$data['title'], $data['description'], $data['category'], $data['icon'], $data['order_index'], $isActive, $id]);
         } else {
             db()->query("INSERT INTO services (title, description, category, icon, order_index, is_active) VALUES (?, ?, ?, ?, ?, ?)",
-                [$data['title'], $data['description'], $data['category'], $data['icon'], $data['order_index'], $data['is_active']]);
+                [$data['title'], $data['description'], $data['category'], $data['icon'], $data['order_index'], $isActive]);
         }
         $message = 'Data berhasil disimpan.';
         $action = 'list';

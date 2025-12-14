@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $settingsToUpdate = [
             'site_name', 'site_tagline', 'site_description', 'contact_email',
-            'contact_phone', 'contact_address', 'visi', 'misi', 'footer_text',
+            'contact_phone', 'contact_address', 'pendahuluan', 'visi', 'misi', 'footer_text',
             'social_instagram', 'social_youtube', 'social_github'
         ];
         
@@ -127,13 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     
-    <!-- Visi Misi -->
+    <!-- Profil Lab -->
     <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6">
         <h2 class="text-lg font-semibold text-white mb-6">
-            <i class="fas fa-bullseye text-purple-400 mr-2"></i>Visi & Misi
+            <i class="fas fa-bullseye text-purple-400 mr-2"></i>Profil Laboratorium
         </h2>
         
         <div class="space-y-4 sm:space-y-6">
+            <div>
+                <label class="block text-gray-300 text-sm font-medium mb-2">Pendahuluan / Tentang Lab</label>
+                <textarea name="pendahuluan" rows="4" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500"><?= htmlspecialchars($settings['pendahuluan'] ?? '') ?></textarea>
+                <p class="mt-1 text-gray-500 text-xs">Deskripsi singkat tentang laboratorium (ditampilkan di halaman Visi & Misi)</p>
+            </div>
+            
             <div>
                 <label class="block text-gray-300 text-sm font-medium mb-2">Visi</label>
                 <textarea name="visi" rows="3" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500"><?= htmlspecialchars($settings['visi'] ?? '') ?></textarea>

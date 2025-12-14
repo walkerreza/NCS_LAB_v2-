@@ -16,8 +16,10 @@ require_once __DIR__ . '/database.php';
 define('APP_NAME', getenv('APP_NAME') ?: 'NCS Laboratory');
 define('APP_URL', getenv('APP_URL') ?: 'http://localhost/ncs');
 define('APP_DEBUG', getenv('APP_DEBUG') === 'true');
-define('MAX_FILE_SIZE', (int)(getenv('MAX_FILE_SIZE') ?: 5242880)); // 5MB default
+define('MAX_FILE_SIZE', (int)(getenv('MAX_FILE_SIZE') ?: 5242880)); // 5MB default for images
+define('MAX_VIDEO_SIZE', (int)(getenv('MAX_VIDEO_SIZE') ?: 104857600)); // 100MB default for videos
 define('ALLOWED_EXTENSIONS', explode(',', getenv('ALLOWED_EXTENSIONS') ?: 'pdf,jpg,jpeg,png,gif'));
+define('ALLOWED_VIDEO_EXTENSIONS', ['mp4', 'webm', 'ogg', 'mov']);
 
 // Path constants
 define('ROOT_PATH', dirname(__DIR__));

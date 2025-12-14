@@ -1,12 +1,17 @@
 -- NCS Laboratory Database Schema
 -- PostgreSQL Database
+-- Updated: December 2025
 
 -- Drop existing tables if exist (for fresh installation)
+DROP TABLE IF EXISTS publications CASCADE;
+DROP TABLE IF EXISTS lab_sinta_profiles CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS documents CASCADE;
 DROP TABLE IF EXISTS gallery CASCADE;
 DROP TABLE IF EXISTS agenda CASCADE;
 DROP TABLE IF EXISTS services CASCADE;
+DROP TABLE IF EXISTS focus_areas CASCADE;
+DROP TABLE IF EXISTS roadmap CASCADE;
 DROP TABLE IF EXISTS team_members CASCADE;
 DROP TABLE IF EXISTS organization_structure CASCADE;
 DROP TABLE IF EXISTS settings CASCADE;
@@ -15,6 +20,10 @@ DROP TABLE IF EXISTS external_links CASCADE;
 
 -- Create extension for UUID (optional)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- =====================================================
+-- CORE TABLES
+-- =====================================================
 
 -- Users table for admin authentication
 CREATE TABLE users (
@@ -42,11 +51,15 @@ CREATE TABLE settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =====================================================
+-- ORGANIZATION TABLES
+-- =====================================================
+
 -- Organization structure table
 CREATE TABLE organization_structure (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    position VARCHAR(100) NOT NULL,
+    position VARCHAR(150) NOT NULL,
     photo VARCHAR(255),
     email VARCHAR(100),
     phone VARCHAR(20),
@@ -68,6 +81,10 @@ CREATE TABLE team_members (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================================
+-- CONTENT TABLES
+-- =====================================================
 
 -- Agenda table for upcoming events
 CREATE TABLE agenda (
@@ -102,7 +119,7 @@ CREATE TABLE gallery (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Documents table for research and community service PDFs
+-- Documents table for community service (pengabdian) PDFs
 CREATE TABLE documents (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -110,7 +127,7 @@ CREATE TABLE documents (
     file_path VARCHAR(255) NOT NULL,
     file_size INT,
     category VARCHAR(50) NOT NULL CHECK (category IN ('penelitian', 'pengabdian')),
-    author VARCHAR(255),
+    author VARCHAR(500),
     publication_date DATE,
     keywords TEXT,
     download_count INT DEFAULT 0,
@@ -120,6 +137,44 @@ CREATE TABLE documents (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =====================================================
+-- RESEARCH PUBLICATIONS TABLES (SINTA)
+-- =====================================================
+
+-- Lab SINTA profiles table
+CREATE TABLE lab_sinta_profiles (
+    id SERIAL PRIMARY KEY,
+    lab_name VARCHAR(255) NOT NULL,
+    kepala_lab VARCHAR(255) NOT NULL,
+    sinta_url VARCHAR(500) NOT NULL,
+    total_publications INT DEFAULT 0,
+    icon VARCHAR(50),
+    order_index INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Publications table for lab research publications
+CREATE TABLE publications (
+    id SERIAL PRIMARY KEY,
+    lab_id INT NOT NULL REFERENCES lab_sinta_profiles(id) ON DELETE CASCADE,
+    lab_name VARCHAR(255) NOT NULL,
+    title TEXT NOT NULL,
+    year INT NOT NULL,
+    citations INT DEFAULT 0,
+    url VARCHAR(500),
+    sinta_id VARCHAR(100),
+    order_index INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- SERVICE & FACILITY TABLES
+-- =====================================================
+
 -- Services table for facilities and consultation
 CREATE TABLE services (
     id SERIAL PRIMARY KEY,
@@ -128,6 +183,34 @@ CREATE TABLE services (
     category VARCHAR(50) NOT NULL CHECK (category IN ('sarana', 'konsultatif')),
     icon VARCHAR(50),
     image VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    order_index INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Focus Areas table for lab specialization areas
+CREATE TABLE focus_areas (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    image VARCHAR(255),
+    icon VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    order_index INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Roadmap table for lab development milestones
+CREATE TABLE roadmap (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    year INT NOT NULL,
+    quarter VARCHAR(10),
+    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('completed', 'in_progress', 'upcoming')),
+    icon VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
     order_index INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -147,6 +230,10 @@ CREATE TABLE external_links (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =====================================================
+-- COMMUNICATION TABLES
+-- =====================================================
+
 -- Comments/Guest messages table
 CREATE TABLE comments (
     id SERIAL PRIMARY KEY,
@@ -163,12 +250,24 @@ CREATE TABLE comments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
+-- =====================================================
+-- INDEXES
+-- =====================================================
+
 CREATE INDEX idx_documents_category ON documents(category);
 CREATE INDEX idx_gallery_category ON gallery(category);
 CREATE INDEX idx_agenda_event_date ON agenda(event_date);
 CREATE INDEX idx_services_category ON services(category);
 CREATE INDEX idx_comments_is_read ON comments(is_read);
+CREATE INDEX idx_publications_lab_id ON publications(lab_id);
+CREATE INDEX idx_publications_citations ON publications(citations DESC);
+CREATE INDEX idx_publications_year ON publications(year DESC);
+CREATE INDEX idx_organization_order ON organization_structure(order_index);
+CREATE INDEX idx_lab_sinta_order ON lab_sinta_profiles(order_index);
+
+-- =====================================================
+-- DEFAULT DATA
+-- =====================================================
 
 -- Insert default admin user (password: admin123)
 -- Hash generated with: password_hash('admin123', PASSWORD_DEFAULT)
@@ -183,41 +282,19 @@ INSERT INTO settings (key, value, type, description) VALUES
 ('site_logo', '', 'image', 'Logo situs'),
 ('site_favicon', '', 'image', 'Favicon situs'),
 ('contact_email', 'ncslab@polinema.ac.id', 'text', 'Email kontak'),
-('contact_phone', '+62-341-000000', 'text', 'Nomor telepon'),
-('contact_address', 'Politeknik Negeri Malang, Jl. Soekarno Hatta No.9, Malang', 'textarea', 'Alamat'),
-('visi', 'Menjadi pusat riset dan pengembangan keamanan siber terkemuka di Indonesia yang menghasilkan inovasi dan solusi dalam bidang Network & Cyber Security.', 'textarea', 'Visi laboratorium'),
-('misi', '1. Melakukan penelitian dan pengembangan di bidang keamanan siber\n2. Menyediakan layanan konsultasi keamanan jaringan\n3. Mengembangkan sumber daya manusia yang kompeten di bidang cyber security\n4. Menjalin kerjasama dengan industri dan institusi terkait', 'textarea', 'Misi laboratorium'),
+('contact_phone', '+62-341-404424', 'text', 'Nomor telepon'),
+('contact_address', 'Politeknik Negeri Malang, Jl. Soekarno Hatta No.9, Malang 65141', 'textarea', 'Alamat'),
+('pendahuluan', '', 'textarea', 'Pendahuluan/Tentang Lab'),
+('visi', '', 'textarea', 'Visi laboratorium'),
+('misi', '', 'textarea', 'Misi laboratorium'),
+('tujuan', '', 'textarea', 'Tujuan laboratorium'),
 ('footer_text', '© 2025 NCS Laboratory. All Rights Reserved.', 'text', 'Teks footer'),
 ('social_instagram', '', 'text', 'Link Instagram'),
 ('social_youtube', '', 'text', 'Link YouTube'),
 ('social_github', '', 'text', 'Link GitHub');
 
--- Insert sample external links
+-- Insert default external links
 INSERT INTO external_links (title, url, icon, description, order_index) VALUES
 ('Polinema', 'https://www.polinema.ac.id', 'building', 'Website resmi Politeknik Negeri Malang', 1),
-('SINTA', 'https://sinta.kemdikbud.go.id', 'book', 'Science and Technology Index', 2),
-('SIM PKM', 'https://simbelmawa.kemdikbud.go.id', 'graduation-cap', 'Sistem Informasi Manajemen PKM', 3);
-
--- Insert sample team members (development team)
-INSERT INTO team_members (name, nim, role, group_name) VALUES
-('Member 1', '1234567890', 'Project Leader', 'Tim Pengembang NCS'),
-('Member 2', '1234567891', 'Backend Developer', 'Tim Pengembang NCS'),
-('Member 3', '1234567892', 'Frontend Developer', 'Tim Pengembang NCS'),
-('Member 4', '1234567893', 'UI/UX Designer', 'Tim Pengembang NCS'),
-('Member 5', '1234567894', 'Database Administrator', 'Tim Pengembang NCS');
-
--- Insert sample organization structure
-INSERT INTO organization_structure (name, position, email, order_index) VALUES
-('Dr. Example Name, M.T.', 'Kepala Laboratorium', 'kepala@ncslab.ac.id', 1),
-('John Doe, M.Kom.', 'Sekretaris', 'sekretaris@ncslab.ac.id', 2),
-('Jane Smith, M.Cs.', 'Koordinator Penelitian', 'penelitian@ncslab.ac.id', 3);
-
--- Insert sample services
-INSERT INTO services (title, description, category, icon, order_index) VALUES
-('Ruang Server', 'Fasilitas ruang server dengan pendingin AC 24 jam dan sistem keamanan terpadu', 'sarana', 'server', 1),
-('Lab Komputer', 'Laboratorium dengan 30 unit komputer high-end untuk praktikum dan penelitian', 'sarana', 'desktop', 2),
-('Perangkat Jaringan', 'Router, Switch, dan perangkat jaringan enterprise untuk simulasi dan penelitian', 'sarana', 'network-wired', 3),
-('Konsultasi Keamanan Jaringan', 'Layanan konsultasi untuk audit dan penilaian keamanan jaringan', 'konsultatif', 'shield-alt', 1),
-('Pelatihan Cyber Security', 'Program pelatihan dan sertifikasi di bidang keamanan siber', 'konsultatif', 'user-shield', 2),
-('Pengujian Penetrasi', 'Layanan penetration testing untuk menguji keamanan sistem', 'konsultatif', 'bug', 3);
-
+('JTI Polinema', 'https://jti.polinema.ac.id', 'university', 'Website resmi Jurusan Teknologi Informasi Polinema', 2),
+('SINTA', 'https://sinta.kemdiktisaintek.go.id', 'book', 'Science and Technology Index', 3);

@@ -327,3 +327,21 @@ function saveComment($data) {
     }
 }
 
+// Get focus areas (Bidang Fokus Lab)
+function getFocusAreas() {
+    try {
+        return db()->fetchAll("SELECT * FROM focus_areas WHERE is_active = TRUE ORDER BY order_index ASC");
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// Get roadmap items
+function getRoadmap() {
+    try {
+        return db()->fetchAll("SELECT * FROM roadmap WHERE is_active = TRUE ORDER BY year ASC, order_index ASC");
+    } catch (Exception $e) {
+        return [];
+    }
+}
+

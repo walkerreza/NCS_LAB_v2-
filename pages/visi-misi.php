@@ -1,9 +1,10 @@
 <?php
 /**
  * Visi & Misi Page - Pastel Theme
- * Display laboratory vision and mission
+ * Display laboratory introduction, vision and mission
  */
 
+$pendahuluan = $settings['pendahuluan'] ?? '';
 $visi = $settings['visi'] ?? '';
 $misi = $settings['misi'] ?? '';
 ?>
@@ -47,6 +48,25 @@ $misi = $settings['misi'] ?? '';
 <section class="py-20 bg-[#1e2433]">
     <div class="container mx-auto px-4">
         <div class="max-w-4xl mx-auto">
+            <!-- Pendahuluan Card -->
+            <div class="cyber-card rounded-2xl p-8 md:p-12 mb-8" data-aos="fade-up">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-[#a8e6cf] to-[#88c9c9] rounded-xl flex items-center justify-center">
+                        <i class="fas fa-info-circle text-gray-800 text-2xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-[#a8e6cf] text-sm font-semibold">Introduction</span>
+                        <h2 class="font-display text-2xl md:text-3xl font-bold text-white">Pendahuluan</h2>
+                    </div>
+                </div>
+                
+                <div class="prose prose-invert max-w-none">
+                    <p class="text-gray-300 leading-relaxed">
+                        <?= nl2br(htmlspecialchars($pendahuluan ?: 'NCS Laboratory (Network & Cyber Security Laboratory) adalah laboratorium penelitian dan pengembangan yang berfokus pada bidang keamanan jaringan dan siber. Didirikan untuk menjadi pusat unggulan dalam riset, edukasi, dan layanan konsultasi keamanan digital.')) ?>
+                    </p>
+                </div>
+            </div>
+            
             <!-- Visi Card -->
             <div class="cyber-card rounded-2xl p-8 md:p-12 mb-8" data-aos="fade-up">
                 <div class="flex items-center space-x-4 mb-6">

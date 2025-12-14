@@ -10,7 +10,8 @@ $message = '';
 // Mark as read
 if ($action === 'read' && $id > 0) {
     db()->query("UPDATE comments SET is_read = TRUE WHERE id = ?", [$id]);
-    redirect(baseUrl('admin/?p=comments'));
+    $message = 'Pesan ditandai sudah dibaca.';
+    $action = 'list';
 }
 
 // Delete message

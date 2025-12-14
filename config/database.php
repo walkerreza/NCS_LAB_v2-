@@ -42,10 +42,10 @@ class Database {
     
     private function __construct() {
         $host = getenv('DB_HOST') ?: 'localhost';
-        $port = getenv('DB_PORT') ?: '5433';
+        $port = getenv('DB_PORT') ?: '5432';
         $dbname = getenv('DB_NAME') ?: 'ncs_lab';
         $user = getenv('DB_USER') ?: 'postgres';
-        $password = getenv('DB_PASSWORD') ?: 'admin';
+        $password = getenv('DB_PASSWORD') ?: '';
         
         $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
         

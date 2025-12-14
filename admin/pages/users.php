@@ -22,9 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
         $error = 'Data tidak lengkap.';
     } else {
         try {
+            // Convert boolean for PostgreSQL
+            $isActive = $data['is_active'] ? 'true' : 'false';
+            
             if ($action === 'edit' && $id > 0) {
                 $sql = "UPDATE users SET username = ?, email = ?, full_name = ?, role = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
-                $params = [$data['username'], $data['email'], $data['full_name'], $data['role'], $data['is_active']];
+                $params = [$data['username'], $data['email'], $data['full_name'], $data['role'], $isActive];
                 if (!empty($password)) { $sql .= ", password = ?"; $params[] = password_hash($password, PASSWORD_DEFAULT); }
                 $sql .= " WHERE id = ?"; $params[] = $id;
                 db()->query($sql, $params);
@@ -33,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                 if (empty($password)) { $error = 'Password wajib diisi.'; }
                 else {
                     db()->query("INSERT INTO users (username, email, password, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?)",
-                        [$data['username'], $data['email'], password_hash($password, PASSWORD_DEFAULT), $data['full_name'], $data['role'], $data['is_active']]);
+                        [$data['username'], $data['email'], password_hash($password, PASSWORD_DEFAULT), $data['full_name'], $data['role'], $isActive]);
                     $message = 'User berhasil ditambahkan.';
                     $action = 'list';
                 }

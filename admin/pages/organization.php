@@ -31,20 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             try {
+                // Convert boolean for PostgreSQL
+                $isActive = $data['is_active'] ? 'true' : 'false';
+                
                 if ($action === 'edit' && $id > 0) {
                     $sql = "UPDATE organization_structure SET name = ?, position = ?, email = ?, phone = ?, order_index = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
-                    $params = [$data['name'], $data['position'], $data['email'], $data['phone'], $data['order_index'], $data['is_active']];
+                    $params = [$data['name'], $data['position'], $data['email'], $data['phone'], $data['order_index'], $isActive];
                     if ($photoPath) { $sql .= ", photo = ?"; $params[] = $photoPath; }
                     $sql .= " WHERE id = ?"; $params[] = $id;
                     db()->query($sql, $params);
                     $message = 'Data berhasil diperbarui.';
                 } else {
                     db()->query("INSERT INTO organization_structure (name, position, email, phone, photo, order_index, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [$data['name'], $data['position'], $data['email'], $data['phone'], $photoPath, $data['order_index'], $data['is_active']]);
+                        [$data['name'], $data['position'], $data['email'], $data['phone'], $photoPath, $data['order_index'], $isActive]);
                     $message = 'Data berhasil ditambahkan.';
                     $action = 'list';
                 }
-            } catch (Exception $e) { $error = 'Terjadi kesalahan.'; }
+            } catch (Exception $e) { $error = 'Terjadi kesalahan: ' . $e->getMessage(); }
         }
     }
 }

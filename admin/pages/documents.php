@@ -1,7 +1,8 @@
 <?php
 /**
  * Admin Documents Management
- * CRUD for research and community service documents
+ * CRUD for community service (pengabdian) documents only
+ * Research publications are managed in publications.php
  */
 
 $action = sanitize($_GET['action'] ?? 'list');
@@ -17,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = [
             'title' => sanitize($_POST['title'] ?? ''),
             'description' => sanitize($_POST['description'] ?? ''),
-            'category' => sanitize($_POST['category'] ?? ''),
+            'category' => 'pengabdian', // Always set to pengabdian
             'author' => sanitize($_POST['author'] ?? ''),
             'publication_date' => sanitize($_POST['publication_date'] ?? ''),
             'keywords' => sanitize($_POST['keywords'] ?? ''),
@@ -25,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         
         // Validate
-        if (empty($data['title']) || empty($data['category'])) {
-            $error = 'Judul dan kategori wajib diisi.';
+        if (empty($data['title'])) {
+            $error = 'Judul wajib diisi.';
         } else {
             // Handle file upload
             $filePath = null;
@@ -44,12 +45,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (empty($error)) {
                 try {
+                    // Convert boolean for PostgreSQL
+                    $isActive = $data['is_active'] ? 'true' : 'false';
+                    
                     if ($action === 'edit' && $id > 0) {
                         // Update existing document
                         $sql = "UPDATE documents SET title = ?, description = ?, category = ?, author = ?, 
                                 publication_date = ?, keywords = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
                         $params = [$data['title'], $data['description'], $data['category'], $data['author'],
-                                   $data['publication_date'] ?: null, $data['keywords'], $data['is_active']];
+                                   $data['publication_date'] ?: null, $data['keywords'], $isActive];
                         
                         if ($filePath) {
                             $sql .= ", file_path = ?, file_size = ?";
@@ -67,21 +71,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $params[] = $id;
                         
                         db()->query($sql, $params);
-                        $message = 'Dokumen berhasil diperbarui.';
+                        $message = 'Dokumen pengabdian berhasil diperbarui.';
                         
                     } else {
                         // Insert new document
                         if (!$filePath) {
                             $error = 'File PDF wajib diupload.';
                         } else {
+                            $userId = $_SESSION['user_id'] ?? null;
                             db()->query(
                                 "INSERT INTO documents (title, description, category, author, publication_date, keywords, file_path, file_size, is_active, created_by) 
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                 [$data['title'], $data['description'], $data['category'], $data['author'],
                                  $data['publication_date'] ?: null, $data['keywords'], $filePath, $fileSize, 
-                                 $data['is_active'], $_SESSION['user_id']]
+                                 $isActive, $userId]
                             );
-                            $message = 'Dokumen berhasil ditambahkan.';
+                            $message = 'Dokumen pengabdian berhasil ditambahkan.';
                             $action = 'list';
                         }
                     }
@@ -96,11 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Handle delete
 if ($action === 'delete' && $id > 0) {
     try {
-        $doc = db()->fetch("SELECT file_path FROM documents WHERE id = ?", [$id]);
+        $doc = db()->fetch("SELECT file_path FROM documents WHERE id = ? AND category = 'pengabdian'", [$id]);
         if ($doc) {
             deleteFile(DOCUMENT_PATH . '/' . $doc['file_path']);
             db()->query("DELETE FROM documents WHERE id = ?", [$id]);
-            $message = 'Dokumen berhasil dihapus.';
+            $message = 'Dokumen pengabdian berhasil dihapus.';
         }
     } catch (Exception $e) {
         $error = 'Gagal menghapus dokumen.';
@@ -111,7 +116,7 @@ if ($action === 'delete' && $id > 0) {
 // Get document for editing
 $document = null;
 if ($action === 'edit' && $id > 0) {
-    $document = db()->fetch("SELECT * FROM documents WHERE id = ?", [$id]);
+    $document = db()->fetch("SELECT * FROM documents WHERE id = ? AND category = 'pengabdian'", [$id]);
     if (!$document) {
         $error = 'Dokumen tidak ditemukan.';
         $action = 'list';
@@ -122,12 +127,14 @@ if ($action === 'edit' && $id > 0) {
 <!-- Page Header -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
     <div>
-        <h1 class="text-xl sm:text-2xl font-bold text-white">Manajemen Dokumen</h1>
-        <p class="text-gray-400 text-sm mt-1">Kelola dokumen penelitian dan pengabdian</p>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">
+            <i class="fas fa-hands-helping text-purple-400 mr-2"></i>Dokumen Pengabdian
+        </h1>
+        <p class="text-gray-400 text-sm mt-1">Kelola dokumen pengabdian masyarakat</p>
     </div>
     <?php if ($action === 'list'): ?>
-    <a href="<?= baseUrl('admin/?p=documents&action=add') ?>" class="inline-flex items-center justify-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 transition-colors text-sm sm:text-base">
-        <i class="fas fa-plus mr-2"></i>Tambah Dokumen
+    <a href="<?= baseUrl('admin/?p=documents&action=add') ?>" class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors text-sm sm:text-base">
+        <i class="fas fa-plus mr-2"></i>Tambah Pengabdian
     </a>
     <?php else: ?>
     <a href="<?= baseUrl('admin/?p=documents') ?>" class="inline-flex items-center justify-center px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm sm:text-base">
@@ -152,23 +159,55 @@ if ($action === 'edit' && $id > 0) {
 <?php if ($action === 'list'): ?>
 <!-- Document List -->
 <?php
-$category = sanitize($_GET['category'] ?? '');
 $search = sanitize($_GET['q'] ?? '');
-$conditions = "1=1";
+$year = sanitize($_GET['year'] ?? '');
+$conditions = "category = 'pengabdian'";
 $params = [];
 
-if ($category) {
-    $conditions .= " AND category = ?";
-    $params[] = $category;
-}
 if ($search) {
     $conditions .= " AND (title ILIKE ? OR author ILIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
+if ($year) {
+    $conditions .= " AND EXTRACT(YEAR FROM publication_date) = ?";
+    $params[] = $year;
+}
 
-$documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY created_at DESC", $params);
+$documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY publication_date DESC, created_at DESC", $params);
+
+// Get available years for filter
+$years = db()->fetchAll("SELECT DISTINCT EXTRACT(YEAR FROM publication_date) as year FROM documents WHERE category = 'pengabdian' AND publication_date IS NOT NULL ORDER BY year DESC");
 ?>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <i class="fas fa-file-alt text-purple-400"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white"><?= count($documents) ?></p>
+                <p class="text-gray-500 text-xs">Total Dokumen</p>
+            </div>
+        </div>
+    </div>
+    <?php 
+    $totalDownloads = db()->fetch("SELECT COALESCE(SUM(download_count), 0) as total FROM documents WHERE category = 'pengabdian'");
+    ?>
+    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                <i class="fas fa-download text-green-400"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white"><?= $totalDownloads['total'] ?? 0 ?></p>
+                <p class="text-gray-500 text-xs">Total Download</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Filters -->
 <div class="bg-gray-800 rounded-xl p-4 mb-6 border border-gray-700">
@@ -176,18 +215,19 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
         <input type="hidden" name="p" value="documents">
         <div class="flex-1">
             <label class="block text-gray-400 text-sm mb-1">Cari</label>
-            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari dokumen..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500">
+            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Cari judul atau penulis..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-purple-500">
         </div>
         <div class="flex gap-4">
             <div class="flex-1 sm:flex-none">
-                <label class="block text-gray-400 text-sm mb-1">Kategori</label>
-                <select name="category" class="w-full sm:w-auto px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500">
-                    <option value="">Semua</option>
-                    <option value="penelitian" <?= $category === 'penelitian' ? 'selected' : '' ?>>Penelitian</option>
-                    <option value="pengabdian" <?= $category === 'pengabdian' ? 'selected' : '' ?>>Pengabdian</option>
+                <label class="block text-gray-400 text-sm mb-1">Tahun</label>
+                <select name="year" class="w-full sm:w-auto px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-purple-500">
+                    <option value="">Semua Tahun</option>
+                    <?php foreach ($years as $y): ?>
+                    <option value="<?= $y['year'] ?>" <?= $year == $y['year'] ? 'selected' : '' ?>><?= $y['year'] ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 self-end">
+            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 self-end">
                 <i class="fas fa-search mr-1"></i><span class="hidden sm:inline">Filter</span>
             </button>
         </div>
@@ -200,16 +240,18 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
     <?php foreach ($documents as $doc): ?>
     <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
         <div class="flex items-start space-x-3">
-            <div class="w-10 h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-file-pdf text-red-400"></i>
+            <div class="w-10 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-file-pdf text-purple-400"></i>
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-white font-medium truncate"><?= htmlspecialchars($doc['title']) ?></p>
                 <p class="text-gray-500 text-sm"><?= htmlspecialchars($doc['author'] ?: '-') ?></p>
                 <div class="flex flex-wrap items-center gap-2 mt-2">
-                    <span class="px-2 py-1 text-xs rounded-full <?= $doc['category'] === 'penelitian' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400' ?>">
-                        <?= ucfirst($doc['category']) ?>
+                    <?php if ($doc['publication_date']): ?>
+                    <span class="px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-400">
+                        <?= date('Y', strtotime($doc['publication_date'])) ?>
                     </span>
+                    <?php endif; ?>
                     <span class="px-2 py-1 text-xs rounded-full <?= $doc['is_active'] ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400' ?>">
                         <?= $doc['is_active'] ? 'Aktif' : 'Nonaktif' ?>
                     </span>
@@ -218,7 +260,7 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
             </div>
         </div>
         <div class="flex justify-end space-x-4 mt-3 pt-3 border-t border-gray-700">
-            <a href="<?= baseUrl('admin/?p=documents&action=edit&id=' . $doc['id']) ?>" class="text-cyan-400 hover:text-cyan-300 text-sm">
+            <a href="<?= baseUrl('admin/?p=documents&action=edit&id=' . $doc['id']) ?>" class="text-purple-400 hover:text-purple-300 text-sm">
                 <i class="fas fa-edit mr-1"></i>Edit
             </a>
             <a href="<?= baseUrl('admin/?p=documents&action=delete&id=' . $doc['id']) ?>" onclick="return confirmDelete()" class="text-red-400 hover:text-red-300 text-sm">
@@ -228,7 +270,7 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
     </div>
     <?php endforeach; ?>
     <?php else: ?>
-    <div class="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center text-gray-500">Belum ada dokumen.</div>
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center text-gray-500">Belum ada dokumen pengabdian.</div>
     <?php endif; ?>
 </div>
 
@@ -239,7 +281,7 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
             <thead class="bg-gray-700">
                 <tr>
                     <th class="px-4 lg:px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Dokumen</th>
-                    <th class="px-4 lg:px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Kategori</th>
+                    <th class="px-4 lg:px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Tahun</th>
                     <th class="px-4 lg:px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Download</th>
                     <th class="px-4 lg:px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                     <th class="px-4 lg:px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase">Aksi</th>
@@ -251,19 +293,17 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
                 <tr class="hover:bg-gray-700/50">
                     <td class="px-4 lg:px-6 py-4">
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-file-pdf text-red-400"></i>
+                            <div class="w-10 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-file-pdf text-purple-400"></i>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-white font-medium truncate max-w-[200px] lg:max-w-none"><?= htmlspecialchars($doc['title']) ?></p>
+                                <p class="text-white font-medium truncate max-w-[300px] lg:max-w-none"><?= htmlspecialchars($doc['title']) ?></p>
                                 <p class="text-gray-500 text-sm"><?= htmlspecialchars($doc['author'] ?: '-') ?></p>
                             </div>
                         </div>
                     </td>
-                    <td class="px-4 lg:px-6 py-4">
-                        <span class="px-2 py-1 text-xs rounded-full <?= $doc['category'] === 'penelitian' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400' ?>">
-                            <?= ucfirst($doc['category']) ?>
-                        </span>
+                    <td class="px-4 lg:px-6 py-4 text-gray-400">
+                        <?= $doc['publication_date'] ? date('Y', strtotime($doc['publication_date'])) : '-' ?>
                     </td>
                     <td class="px-4 lg:px-6 py-4 text-gray-400"><?= $doc['download_count'] ?></td>
                     <td class="px-4 lg:px-6 py-4">
@@ -272,7 +312,7 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
                         </span>
                     </td>
                     <td class="px-4 lg:px-6 py-4 text-right whitespace-nowrap">
-                        <a href="<?= baseUrl('admin/?p=documents&action=edit&id=' . $doc['id']) ?>" class="text-cyan-400 hover:text-cyan-300 mr-3">
+                        <a href="<?= baseUrl('admin/?p=documents&action=edit&id=' . $doc['id']) ?>" class="text-purple-400 hover:text-purple-300 mr-3">
                             <i class="fas fa-edit"></i>
                         </a>
                         <a href="<?= baseUrl('admin/?p=documents&action=delete&id=' . $doc['id']) ?>" onclick="return confirmDelete()" class="text-red-400 hover:text-red-300">
@@ -283,7 +323,7 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
                 <?php endforeach; ?>
                 <?php else: ?>
                 <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">Belum ada dokumen.</td>
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">Belum ada dokumen pengabdian.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
@@ -295,59 +335,53 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
 <!-- Add/Edit Form -->
 <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6">
     <h2 class="text-lg font-semibold text-white mb-6">
-        <?= $action === 'edit' ? 'Edit Dokumen' : 'Tambah Dokumen Baru' ?>
+        <i class="fas fa-hands-helping text-purple-400 mr-2"></i>
+        <?= $action === 'edit' ? 'Edit Dokumen Pengabdian' : 'Tambah Dokumen Pengabdian Baru' ?>
     </h2>
     
     <form method="POST" enctype="multipart/form-data" class="space-y-4 sm:space-y-6">
         <?= csrf_field() ?>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div>
-                <label class="block text-gray-300 text-sm font-medium mb-2">Judul *</label>
-                <input type="text" name="title" required value="<?= htmlspecialchars($document['title'] ?? '') ?>"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500">
-            </div>
-            
-            <div>
-                <label class="block text-gray-300 text-sm font-medium mb-2">Kategori *</label>
-                <select name="category" required class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500">
-                    <option value="">Pilih Kategori</option>
-                    <option value="penelitian" <?= ($document['category'] ?? '') === 'penelitian' ? 'selected' : '' ?>>Penelitian</option>
-                    <option value="pengabdian" <?= ($document['category'] ?? '') === 'pengabdian' ? 'selected' : '' ?>>Pengabdian</option>
-                </select>
-            </div>
+        <div>
+            <label class="block text-gray-300 text-sm font-medium mb-2">Judul Pengabdian *</label>
+            <input type="text" name="title" required value="<?= htmlspecialchars($document['title'] ?? '') ?>"
+                   placeholder="Judul kegiatan pengabdian masyarakat..."
+                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-purple-500">
         </div>
         
         <div>
             <label class="block text-gray-300 text-sm font-medium mb-2">Deskripsi</label>
-            <textarea name="description" rows="4" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500"><?= htmlspecialchars($document['description'] ?? '') ?></textarea>
+            <textarea name="description" rows="4" 
+                      placeholder="Deskripsi kegiatan pengabdian (program studi, skema, dll)..."
+                      class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-purple-500"><?= htmlspecialchars($document['description'] ?? '') ?></textarea>
         </div>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
-                <label class="block text-gray-300 text-sm font-medium mb-2">Penulis</label>
+                <label class="block text-gray-300 text-sm font-medium mb-2">Ketua & Anggota Pengabdian</label>
                 <input type="text" name="author" value="<?= htmlspecialchars($document['author'] ?? '') ?>"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500">
+                       placeholder="Nama ketua, anggota 1, anggota 2..."
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-purple-500">
             </div>
             
             <div>
                 <label class="block text-gray-300 text-sm font-medium mb-2">Tanggal Publikasi</label>
                 <input type="date" name="publication_date" value="<?= $document['publication_date'] ?? '' ?>"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500">
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-purple-500">
             </div>
         </div>
         
         <div>
             <label class="block text-gray-300 text-sm font-medium mb-2">Keywords (pisahkan dengan koma)</label>
             <input type="text" name="keywords" value="<?= htmlspecialchars($document['keywords'] ?? '') ?>"
-                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500"
-                   placeholder="cyber security, network, penetration testing">
+                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:border-purple-500"
+                   placeholder="pengabdian, pelatihan, UMKM, teknologi...">
         </div>
         
         <div>
             <label class="block text-gray-300 text-sm font-medium mb-2">File PDF <?= $action === 'add' ? '*' : '' ?></label>
             <input type="file" name="file" accept=".pdf" <?= $action === 'add' ? 'required' : '' ?>
-                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white hover:file:bg-cyan-500">
+                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-500">
             <?php if ($document && $document['file_path']): ?>
             <p class="text-gray-500 text-sm mt-2">File saat ini: <?= htmlspecialchars($document['file_path']) ?> (<?= formatFileSize($document['file_size']) ?>)</p>
             <?php endif; ?>
@@ -356,13 +390,13 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
         
         <div class="flex items-center">
             <input type="checkbox" name="is_active" id="is_active" value="1" <?= ($document['is_active'] ?? true) ? 'checked' : '' ?>
-                   class="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500">
+                   class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500">
             <label for="is_active" class="ml-2 text-gray-300">Aktif (tampilkan di website)</label>
         </div>
         
         <div class="flex flex-col sm:flex-row gap-4">
-            <button type="submit" class="px-6 py-3 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-500 transition-colors">
-                <i class="fas fa-save mr-2"></i><?= $action === 'edit' ? 'Simpan Perubahan' : 'Tambah Dokumen' ?>
+            <button type="submit" class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-500 transition-colors">
+                <i class="fas fa-save mr-2"></i><?= $action === 'edit' ? 'Simpan Perubahan' : 'Tambah Pengabdian' ?>
             </button>
             <a href="<?= baseUrl('admin/?p=documents') ?>" class="px-6 py-3 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition-colors text-center">
                 Batal
@@ -371,4 +405,3 @@ $documents = db()->fetchAll("SELECT * FROM documents WHERE $conditions ORDER BY 
     </form>
 </div>
 <?php endif; ?>
-

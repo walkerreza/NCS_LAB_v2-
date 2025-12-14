@@ -34,9 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             try {
+                // Convert boolean values for PostgreSQL
+                $isFeatured = $data['is_featured'] ? 'true' : 'false';
+                $isActive = $data['is_active'] ? 'true' : 'false';
+                
                 if ($action === 'edit' && $id > 0) {
                     $sql = "UPDATE agenda SET title = ?, description = ?, event_date = ?, event_time = ?, location = ?, is_featured = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
-                    $params = [$data['title'], $data['description'], $data['event_date'], $data['event_time'] ?: null, $data['location'], $data['is_featured'], $data['is_active']];
+                    $params = [$data['title'], $data['description'], $data['event_date'], $data['event_time'] ?: null, $data['location'], $isFeatured, $isActive];
                     
                     if ($imagePath) {
                         $sql .= ", image = ?";
@@ -49,15 +53,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     db()->query($sql, $params);
                     $message = 'Agenda berhasil diperbarui.';
                 } else {
+                    $userId = $_SESSION['user_id'] ?? null;
                     db()->query(
                         "INSERT INTO agenda (title, description, event_date, event_time, location, image, is_featured, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        [$data['title'], $data['description'], $data['event_date'], $data['event_time'] ?: null, $data['location'], $imagePath, $data['is_featured'], $data['is_active'], $_SESSION['user_id']]
+                        [$data['title'], $data['description'], $data['event_date'], $data['event_time'] ?: null, $data['location'], $imagePath, $isFeatured, $isActive, $userId]
                     );
                     $message = 'Agenda berhasil ditambahkan.';
                     $action = 'list';
                 }
             } catch (Exception $e) {
-                $error = 'Terjadi kesalahan.';
+                $error = 'Terjadi kesalahan: ' . $e->getMessage();
             }
         }
     }

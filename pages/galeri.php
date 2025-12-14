@@ -97,12 +97,27 @@ $categories = db()->fetchAll("SELECT DISTINCT category FROM gallery WHERE is_act
                  data-aos-delay="<?= ($index % 8) * 50 ?>"
                  onclick="openLightbox(<?= $item['id'] ?>)">
                 
-                <!-- Image -->
+                <!-- Media -->
                 <div class="aspect-square bg-[#2a3142]">
                     <?php if (!empty($item['file_path'])): ?>
-                    <img src="<?= uploadUrl('images/' . $item['file_path']) ?>" 
-                         alt="<?= htmlspecialchars($item['title']) ?>" 
-                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <?php if ($item['file_type'] === 'video'): ?>
+                        <!-- Video Thumbnail -->
+                        <div class="w-full h-full relative">
+                            <video class="w-full h-full object-cover" muted preload="metadata">
+                                <source src="<?= uploadUrl('images/' . $item['file_path']) ?>#t=0.5" type="video/mp4">
+                            </video>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="w-16 h-16 bg-[#e8b4bc]/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-play text-gray-800 text-xl ml-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <!-- Image -->
+                        <img src="<?= uploadUrl('images/' . $item['file_path']) ?>" 
+                             alt="<?= htmlspecialchars($item['title']) ?>" 
+                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <?php endif; ?>
                     <?php else: ?>
                     <div class="w-full h-full flex items-center justify-center">
                         <i class="fas fa-image text-gray-600 text-4xl"></i>
@@ -115,8 +130,8 @@ $categories = db()->fetchAll("SELECT DISTINCT category FROM gallery WHERE is_act
                     <!-- Type Icon -->
                     <div class="absolute top-4 right-4">
                         <?php if ($item['file_type'] === 'video'): ?>
-                        <span class="w-10 h-10 bg-[#e8b4bc] rounded-full flex items-center justify-center">
-                            <i class="fas fa-play text-gray-800 text-sm"></i>
+                        <span class="px-3 py-1 bg-[#e8b4bc] rounded-full text-gray-800 text-xs font-semibold">
+                            <i class="fas fa-video mr-1"></i>Video
                         </span>
                         <?php else: ?>
                         <span class="w-10 h-10 bg-[#88c9c9]/80 rounded-full flex items-center justify-center">
@@ -172,16 +187,28 @@ $categories = db()->fetchAll("SELECT DISTINCT category FROM gallery WHERE is_act
         <i class="fas fa-times text-3xl"></i>
     </button>
     
-    <button onclick="prevImage()" class="absolute left-4 text-white hover:text-[#88c9c9] transition-colors z-10">
+    <button onclick="prevMedia()" class="absolute left-4 text-white hover:text-[#88c9c9] transition-colors z-10">
         <i class="fas fa-chevron-left text-3xl"></i>
     </button>
     
-    <button onclick="nextImage()" class="absolute right-4 text-white hover:text-[#88c9c9] transition-colors z-10">
+    <button onclick="nextMedia()" class="absolute right-4 text-white hover:text-[#88c9c9] transition-colors z-10">
         <i class="fas fa-chevron-right text-3xl"></i>
     </button>
     
-    <div class="max-w-5xl max-h-[90vh] px-4">
-        <img id="lightbox-image" src="" alt="" class="max-w-full max-h-[80vh] mx-auto">
+    <div class="max-w-5xl max-h-[90vh] px-4 w-full">
+        <!-- Image Container -->
+        <div id="lightbox-image-container" class="flex justify-center">
+            <img id="lightbox-image" src="" alt="" class="max-w-full max-h-[80vh] mx-auto rounded-lg">
+        </div>
+        
+        <!-- Video Container -->
+        <div id="lightbox-video-container" class="hidden flex justify-center">
+            <video id="lightbox-video" controls class="max-w-full max-h-[80vh] mx-auto rounded-lg" preload="metadata">
+                <source id="lightbox-video-source" src="" type="video/mp4">
+                Browser Anda tidak mendukung video.
+            </video>
+        </div>
+        
         <div class="text-center mt-4">
             <h3 id="lightbox-title" class="text-white text-lg font-semibold"></h3>
             <p id="lightbox-description" class="text-gray-400 text-sm mt-2"></p>
@@ -197,7 +224,7 @@ const galleryData = <?= json_encode(array_map(function($item) {
         'title' => $item['title'],
         'description' => $item['description'],
         'file_path' => uploadUrl('images/' . $item['file_path']),
-        'file_type' => $item['file_type']
+        'file_type' => $item['file_type'] ?? 'image'
     ];
 }, $gallery)) ?>;
 
@@ -208,31 +235,57 @@ function openLightbox(id) {
     if (index === -1) return;
     
     currentIndex = index;
-    showImage();
+    showMedia();
     document.getElementById('lightbox').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
 function closeLightbox() {
+    // Stop video if playing
+    const video = document.getElementById('lightbox-video');
+    video.pause();
+    video.currentTime = 0;
+    
     document.getElementById('lightbox').classList.add('hidden');
     document.body.style.overflow = '';
 }
 
-function showImage() {
+function showMedia() {
     const item = galleryData[currentIndex];
-    document.getElementById('lightbox-image').src = item.file_path;
+    const imageContainer = document.getElementById('lightbox-image-container');
+    const videoContainer = document.getElementById('lightbox-video-container');
+    const image = document.getElementById('lightbox-image');
+    const video = document.getElementById('lightbox-video');
+    const videoSource = document.getElementById('lightbox-video-source');
+    
+    // Stop any playing video
+    video.pause();
+    
+    if (item.file_type === 'video') {
+        // Show video
+        imageContainer.classList.add('hidden');
+        videoContainer.classList.remove('hidden');
+        videoSource.src = item.file_path;
+        video.load();
+    } else {
+        // Show image
+        videoContainer.classList.add('hidden');
+        imageContainer.classList.remove('hidden');
+        image.src = item.file_path;
+    }
+    
     document.getElementById('lightbox-title').textContent = item.title;
     document.getElementById('lightbox-description').textContent = item.description || '';
 }
 
-function nextImage() {
+function nextMedia() {
     currentIndex = (currentIndex + 1) % galleryData.length;
-    showImage();
+    showMedia();
 }
 
-function prevImage() {
+function prevMedia() {
     currentIndex = (currentIndex - 1 + galleryData.length) % galleryData.length;
-    showImage();
+    showMedia();
 }
 
 // Keyboard navigation
@@ -240,8 +293,8 @@ document.addEventListener('keydown', (e) => {
     if (document.getElementById('lightbox').classList.contains('hidden')) return;
     
     if (e.key === 'Escape') closeLightbox();
-    if (e.key === 'ArrowRight') nextImage();
-    if (e.key === 'ArrowLeft') prevImage();
+    if (e.key === 'ArrowRight') nextMedia();
+    if (e.key === 'ArrowLeft') prevMedia();
 });
 
 // Close on background click

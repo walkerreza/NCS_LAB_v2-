@@ -16,6 +16,8 @@ $validPages = [
     'beranda',
     'visi-misi',
     'struktur',
+    'fokus',
+    'roadmap',
     'agenda',
     'galeri',
     'penelitian',
@@ -27,9 +29,12 @@ $validPages = [
     'download'
 ];
 
-// Validate page
+// Check if page is valid
+$is404 = false;
 if (!in_array($page, $validPages)) {
-    $page = 'beranda';
+    $is404 = true;
+    $page = '404';
+    http_response_code(404);
 }
 
 // Handle special routes (AJAX, downloads)
@@ -122,13 +127,16 @@ $pageTitles = [
     'beranda' => 'Beranda',
     'visi-misi' => 'Visi & Misi',
     'struktur' => 'Struktur Organisasi',
+    'fokus' => 'Bidang Fokus',
+    'roadmap' => 'Roadmap',
     'agenda' => 'Agenda Kegiatan',
     'galeri' => 'Galeri Kegiatan',
     'penelitian' => 'Arsip Penelitian',
     'pengabdian' => 'Arsip Pengabdian',
     'sarana' => 'Sarana & Prasarana',
     'konsultatif' => 'Layanan Konsultatif',
-    'link' => 'Link Terkait'
+    'link' => 'Link Terkait',
+    '404' => 'Halaman Tidak Ditemukan'
 ];
 
 $pageTitle = ($pageTitles[$page] ?? 'Beranda') . ' - ' . APP_NAME;

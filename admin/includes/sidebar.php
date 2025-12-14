@@ -70,14 +70,32 @@ $user = $_SESSION['user_name'] ?? 'Admin';
         
         <a href="<?= baseUrl('admin/?p=documents') ?>" 
            class="sidebar-link flex items-center px-4 py-3 text-gray-300 rounded-lg border-l-4 border-transparent hover:bg-gray-700/50 transition-colors <?= $currentPage === 'documents' ? 'active' : '' ?>">
-            <i class="fas fa-file-pdf w-5 mr-3"></i>
-            Dokumen
+            <i class="fas fa-hands-helping w-5 mr-3"></i>
+            Pengabdian
+        </a>
+        
+        <a href="<?= baseUrl('admin/?p=publications') ?>" 
+           class="sidebar-link flex items-center px-4 py-3 text-gray-300 rounded-lg border-l-4 border-transparent hover:bg-gray-700/50 transition-colors <?= $currentPage === 'publications' ? 'active' : '' ?>">
+            <i class="fas fa-flask w-5 mr-3"></i>
+            Publikasi Penelitian
         </a>
         
         <a href="<?= baseUrl('admin/?p=services') ?>" 
            class="sidebar-link flex items-center px-4 py-3 text-gray-300 rounded-lg border-l-4 border-transparent hover:bg-gray-700/50 transition-colors <?= $currentPage === 'services' ? 'active' : '' ?>">
             <i class="fas fa-concierge-bell w-5 mr-3"></i>
             Layanan
+        </a>
+        
+        <a href="<?= baseUrl('admin/?p=focus-areas') ?>" 
+           class="sidebar-link flex items-center px-4 py-3 text-gray-300 rounded-lg border-l-4 border-transparent hover:bg-gray-700/50 transition-colors <?= $currentPage === 'focus-areas' ? 'active' : '' ?>">
+            <i class="fas fa-crosshairs w-5 mr-3"></i>
+            Bidang Fokus
+        </a>
+        
+        <a href="<?= baseUrl('admin/?p=roadmap') ?>" 
+           class="sidebar-link flex items-center px-4 py-3 text-gray-300 rounded-lg border-l-4 border-transparent hover:bg-gray-700/50 transition-colors <?= $currentPage === 'roadmap' ? 'active' : '' ?>">
+            <i class="fas fa-road w-5 mr-3"></i>
+            Roadmap
         </a>
         
         <div class="pt-4 pb-2">

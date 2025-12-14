@@ -37,13 +37,17 @@ $validPages = [
     'agenda',
     'gallery',
     'documents',
+    'publications',
     'services',
+    'focus-areas',
+    'roadmap',
     'links',
     'comments'
 ];
 
 if (!in_array($adminPage, $validPages)) {
-    $adminPage = 'dashboard';
+    $adminPage = '404';
+    http_response_code(404);
 }
 
 // Set page title
@@ -56,10 +60,14 @@ $pageTitles = [
     'team' => 'Tim Pengembang',
     'agenda' => 'Agenda',
     'gallery' => 'Galeri',
-    'documents' => 'Dokumen',
+    'documents' => 'Dokumen Pengabdian',
+    'publications' => 'Publikasi Penelitian',
     'services' => 'Layanan',
+    'focus-areas' => 'Bidang Fokus',
+    'roadmap' => 'Roadmap',
     'links' => 'Link Eksternal',
-    'comments' => 'Pesan'
+    'comments' => 'Pesan',
+    '404' => 'Halaman Tidak Ditemukan'
 ];
 
 $pageTitle = 'Admin - ' . ($pageTitles[$adminPage] ?? 'Dashboard') . ' | ' . APP_NAME;
@@ -79,7 +87,7 @@ if ($adminPage === 'login') {
     if (file_exists($pageFile)) {
         include $pageFile;
     } else {
-        include __DIR__ . '/pages/dashboard.php';
+        include __DIR__ . '/pages/404.php';
     }
     
     echo '</div>';

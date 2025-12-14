@@ -1,12 +1,18 @@
 <?php
 /**
  * Admin Gallery Management
- */
+ * Supports both image and video uploads
+  q d         */
 
 $action = sanitize($_GET['action'] ?? 'list');
 $id = (int)($_GET['id'] ?? 0);
 $message = '';
 $error = '';
+
+// Allowed file types
+$imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+$videoTypes = ['mp4', 'webm', 'ogg', 'mov'];
+$allTypes = array_merge($imageTypes, $videoTypes);
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -18,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'description' => sanitize($_POST['description'] ?? ''),
             'category' => sanitize($_POST['category'] ?? ''),
             'event_date' => sanitize($_POST['event_date'] ?? ''),
+            'file_type' => sanitize($_POST['file_type'] ?? 'image'),
             'is_featured' => isset($_POST['is_featured']),
             'is_active' => isset($_POST['is_active'])
         ];
@@ -26,10 +33,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Judul wajib diisi.';
         } else {
             $filePath = null;
+            $fileType = $data['file_type'];
+            
             if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
-                $upload = uploadFile($_FILES['file'], IMAGE_PATH, ['jpg', 'jpeg', 'png', 'gif', 'webp'], 5242880);
+                // Determine allowed types based on file_type selection
+                $allowedTypes = ($fileType === 'video') ? $videoTypes : $imageTypes;
+                $maxSize = ($fileType === 'video') ? 104857600 : 5242880; // 100MB for video, 5MB for image
+                
+                $upload = uploadFile($_FILES['file'], IMAGE_PATH, $allowedTypes, $maxSize);
                 if ($upload['success']) {
                     $filePath = $upload['filename'];
+                    // Auto-detect file type from extension
+                    if (in_array($upload['extension'], $videoTypes)) {
+                        $fileType = 'video';
+                    } else {
+                        $fileType = 'image';
+                    }
                 } else {
                     $error = $upload['message'];
                 }
@@ -37,11 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (empty($error)) {
                 try {
+                    // Convert boolean values for PostgreSQL
+                    $isFeatured = $data['is_featured'] ? 'true' : 'false';
+                    $isActive = $data['is_active'] ? 'true' : 'false';
+                    
                     if ($action === 'edit' && $id > 0) {
-                        $sql = "UPDATE gallery SET title = ?, description = ?, category = ?, event_date = ?, is_featured = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
-                        $params = [$data['title'], $data['description'], $data['category'], $data['event_date'] ?: null, $data['is_featured'], $data['is_active']];
+                        $sql = "UPDATE gallery SET title = ?, description = ?, category = ?, event_date = ?, file_type = ?, is_featured = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP";
+                        $params = [$data['title'], $data['description'], $data['category'], $data['event_date'] ?: null, $fileType, $isFeatured, $isActive];
                         
                         if ($filePath) {
+                            // Delete old file
+                            $oldItem = db()->fetch("SELECT file_path FROM gallery WHERE id = ?", [$id]);
+                            if ($oldItem && !empty($oldItem['file_path'])) {
+                                deleteFile(IMAGE_PATH . '/' . $oldItem['file_path']);
+                            }
                             $sql .= ", file_path = ?";
                             $params[] = $filePath;
                         }
@@ -53,18 +81,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $message = 'Galeri berhasil diperbarui.';
                     } else {
                         if (!$filePath) {
-                            $error = 'Gambar wajib diupload.';
+                            $error = 'File wajib diupload.';
                         } else {
+                            $userId = $_SESSION['user_id'] ?? null;
                             db()->query(
-                                "INSERT INTO gallery (title, description, file_path, category, event_date, is_featured, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                [$data['title'], $data['description'], $filePath, $data['category'], $data['event_date'] ?: null, $data['is_featured'], $data['is_active'], $_SESSION['user_id']]
+                                "INSERT INTO gallery (title, description, file_path, file_type, category, event_date, is_featured, is_active, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                [$data['title'], $data['description'], $filePath, $fileType, $data['category'], $data['event_date'] ?: null, $isFeatured, $isActive, $userId]
                             );
                             $message = 'Galeri berhasil ditambahkan.';
                             $action = 'list';
                         }
                     }
                 } catch (Exception $e) {
-                    $error = 'Terjadi kesalahan.';
+                    $error = 'Terjadi kesalahan: ' . $e->getMessage();
                 }
             }
         }
@@ -120,7 +149,24 @@ if ($action === 'edit' && $id > 0) {
     <?php foreach ($items as $item): ?>
     <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 group">
         <div class="aspect-square relative">
+            <?php if ($item['file_type'] === 'video'): ?>
+            <!-- Video Thumbnail -->
+            <div class="w-full h-full bg-gray-900 flex items-center justify-center">
+                <video class="w-full h-full object-cover" muted>
+                    <source src="<?= uploadUrl('images/' . $item['file_path']) ?>" type="video/mp4">
+                </video>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center">
+                        <i class="fas fa-play text-white text-2xl ml-1"></i>
+                    </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <!-- Image -->
             <img src="<?= uploadUrl('images/' . $item['file_path']) ?>" alt="<?= htmlspecialchars($item['title']) ?>" class="w-full h-full object-cover">
+            <?php endif; ?>
+            
+            <!-- Hover Actions -->
             <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
                 <a href="<?= baseUrl('admin/?p=gallery&action=edit&id=' . $item['id']) ?>" class="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-white hover:bg-cyan-400">
                     <i class="fas fa-edit"></i>
@@ -129,8 +175,15 @@ if ($action === 'edit' && $id > 0) {
                     <i class="fas fa-trash"></i>
                 </a>
             </div>
+            
+            <!-- Badges -->
             <?php if (!$item['is_active']): ?>
             <span class="absolute top-2 left-2 bg-gray-500 text-white text-xs px-2 py-1 rounded">Nonaktif</span>
+            <?php endif; ?>
+            <?php if ($item['file_type'] === 'video'): ?>
+            <span class="absolute top-2 right-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                <i class="fas fa-video mr-1"></i>Video
+            </span>
             <?php endif; ?>
         </div>
         <div class="p-3">
@@ -175,11 +228,63 @@ if ($action === 'edit' && $id > 0) {
                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500">
             </div>
             <div>
-                <label class="block text-gray-300 text-sm font-medium mb-2">Gambar <?= $action === 'add' ? '*' : '' ?></label>
-                <input type="file" name="file" accept="image/*" <?= $action === 'add' ? 'required' : '' ?>
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white">
+                <label class="block text-gray-300 text-sm font-medium mb-2">Tipe File</label>
+                <select name="file_type" id="file_type" onchange="updateFileAccept()"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-cyan-500">
+                    <option value="image" <?= ($gallery['file_type'] ?? 'image') === 'image' ? 'selected' : '' ?>>
+                        <i class="fas fa-image"></i> Gambar (JPG, PNG, GIF, WebP)
+                    </option>
+                    <option value="video" <?= ($gallery['file_type'] ?? '') === 'video' ? 'selected' : '' ?>>
+                        <i class="fas fa-video"></i> Video (MP4, WebM, OGG, MOV)
+                    </option>
+                </select>
             </div>
         </div>
+        
+        <div>
+            <label class="block text-gray-300 text-sm font-medium mb-2">
+                <span id="file_label">File</span> <?= $action === 'add' ? '*' : '' ?>
+            </label>
+            <input type="file" name="file" id="file_input" <?= $action === 'add' ? 'required' : '' ?>
+                   accept="image/jpeg,image/png,image/gif,image/webp"
+                   class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white">
+            <p class="mt-2 text-gray-500 text-xs" id="file_hint">
+                Format: JPG, PNG, GIF, WebP. Maksimal 5MB.
+            </p>
+            <?php if (!empty($gallery['file_path'])): ?>
+            <div class="mt-3 p-3 bg-gray-700/50 rounded-lg">
+                <p class="text-gray-400 text-sm mb-2">File saat ini:</p>
+                <?php if ($gallery['file_type'] === 'video'): ?>
+                <video controls class="max-w-xs rounded-lg">
+                    <source src="<?= uploadUrl('images/' . $gallery['file_path']) ?>" type="video/mp4">
+                </video>
+                <?php else: ?>
+                <img src="<?= uploadUrl('images/' . $gallery['file_path']) ?>" class="max-w-xs rounded-lg">
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        
+        <script>
+        function updateFileAccept() {
+            const fileType = document.getElementById('file_type').value;
+            const fileInput = document.getElementById('file_input');
+            const fileLabel = document.getElementById('file_label');
+            const fileHint = document.getElementById('file_hint');
+            
+            if (fileType === 'video') {
+                fileInput.accept = 'video/mp4,video/webm,video/ogg,video/quicktime';
+                fileLabel.textContent = 'Video';
+                fileHint.textContent = 'Format: MP4, WebM, OGG, MOV. Maksimal 100MB.';
+            } else {
+                fileInput.accept = 'image/jpeg,image/png,image/gif,image/webp';
+                fileLabel.textContent = 'Gambar';
+                fileHint.textContent = 'Format: JPG, PNG, GIF, WebP. Maksimal 5MB.';
+            }
+        }
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', updateFileAccept);
+        </script>
         
         <div class="flex flex-wrap items-center gap-4 sm:gap-6">
             <label class="flex items-center">

@@ -11,12 +11,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
     $data = ['name' => sanitize($_POST['name'] ?? ''), 'nim' => sanitize($_POST['nim'] ?? ''), 'role' => sanitize($_POST['role'] ?? ''), 'group_name' => sanitize($_POST['group_name'] ?? ''), 'is_active' => isset($_POST['is_active'])];
     
     if (!empty($data['name'])) {
+        // Convert boolean for PostgreSQL
+        $isActive = $data['is_active'] ? 'true' : 'false';
+        
         if ($action === 'edit' && $id > 0) {
             db()->query("UPDATE team_members SET name = ?, nim = ?, role = ?, group_name = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", 
-                [$data['name'], $data['nim'], $data['role'], $data['group_name'], $data['is_active'], $id]);
+                [$data['name'], $data['nim'], $data['role'], $data['group_name'], $isActive, $id]);
         } else {
             db()->query("INSERT INTO team_members (name, nim, role, group_name, is_active) VALUES (?, ?, ?, ?, ?)",
-                [$data['name'], $data['nim'], $data['role'], $data['group_name'], $data['is_active']]);
+                [$data['name'], $data['nim'], $data['role'], $data['group_name'], $isActive]);
         }
         $message = 'Data berhasil disimpan.';
         $action = 'list';

@@ -18,12 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
     ];
     
     if (!empty($data['title']) && $data['url']) {
+        // Convert boolean for PostgreSQL
+        $isActive = $data['is_active'] ? 'true' : 'false';
+        
         if ($action === 'edit' && $id > 0) {
             db()->query("UPDATE external_links SET title = ?, url = ?, icon = ?, description = ?, order_index = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                [$data['title'], $data['url'], $data['icon'], $data['description'], $data['order_index'], $data['is_active'], $id]);
+                [$data['title'], $data['url'], $data['icon'], $data['description'], $data['order_index'], $isActive, $id]);
         } else {
             db()->query("INSERT INTO external_links (title, url, icon, description, order_index, is_active) VALUES (?, ?, ?, ?, ?, ?)",
-                [$data['title'], $data['url'], $data['icon'], $data['description'], $data['order_index'], $data['is_active']]);
+                [$data['title'], $data['url'], $data['icon'], $data['description'], $data['order_index'], $isActive]);
         }
         $message = 'Data berhasil disimpan.';
         $action = 'list';

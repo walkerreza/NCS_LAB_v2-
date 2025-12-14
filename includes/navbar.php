@@ -46,7 +46,7 @@ $siteLogo = $settings['site_logo'] ?? '';
                 
                 <!-- Profil Dropdown -->
                 <div class="dropdown relative">
-                    <button class="px-4 py-2 rounded-lg text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-all flex items-center <?= in_array($currentPage, ['visi-misi', 'struktur']) ? 'text-[#a8e6cf] bg-[#2a3142]' : '' ?>">
+                    <button class="px-4 py-2 rounded-lg text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-all flex items-center <?= in_array($currentPage, ['visi-misi', 'struktur', 'fokus', 'roadmap']) ? 'text-[#a8e6cf] bg-[#2a3142]' : '' ?>">
                         <i class="fas fa-building mr-2"></i>Profil
                         <i class="fas fa-chevron-down ml-2 text-xs"></i>
                     </button>
@@ -54,8 +54,14 @@ $siteLogo = $settings['site_logo'] ?? '';
                         <a href="<?= baseUrl('?page=visi-misi') ?>" class="block px-4 py-3 text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-colors border-b border-[#3a4255]">
                             <i class="fas fa-bullseye w-6"></i>Visi & Misi
                         </a>
-                        <a href="<?= baseUrl('?page=struktur') ?>" class="block px-4 py-3 text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-colors">
+                        <a href="<?= baseUrl('?page=struktur') ?>" class="block px-4 py-3 text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-colors border-b border-[#3a4255]">
                             <i class="fas fa-sitemap w-6"></i>Struktur Organisasi
+                        </a>
+                        <a href="<?= baseUrl('?page=fokus') ?>" class="block px-4 py-3 text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-colors border-b border-[#3a4255]">
+                            <i class="fas fa-crosshairs w-6"></i>Bidang Fokus
+                        </a>
+                        <a href="<?= baseUrl('?page=roadmap') ?>" class="block px-4 py-3 text-gray-300 hover:text-[#a8e6cf] hover:bg-[#2a3142] transition-colors">
+                            <i class="fas fa-road w-6"></i>Roadmap
                         </a>
                     </div>
                 </div>
@@ -133,6 +139,8 @@ $siteLogo = $settings['site_logo'] ?? '';
                 <div class="mobile-dropdown-content hidden pl-8 space-y-1 mt-2">
                     <a href="<?= baseUrl('?page=visi-misi') ?>" class="block px-4 py-2 text-gray-400 hover:text-[#a8e6cf] transition-colors">Visi & Misi</a>
                     <a href="<?= baseUrl('?page=struktur') ?>" class="block px-4 py-2 text-gray-400 hover:text-[#a8e6cf] transition-colors">Struktur Organisasi</a>
+                    <a href="<?= baseUrl('?page=fokus') ?>" class="block px-4 py-2 text-gray-400 hover:text-[#a8e6cf] transition-colors">Bidang Fokus</a>
+                    <a href="<?= baseUrl('?page=roadmap') ?>" class="block px-4 py-2 text-gray-400 hover:text-[#a8e6cf] transition-colors">Roadmap</a>
                 </div>
             </div>
             
